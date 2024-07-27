@@ -41,7 +41,7 @@
 
 			newElement.querySelector(".highest").textContent = rollResult.highest
 			newElement.querySelector(".successes").textContent = rollResult.successes
-			newElement.querySelector(".crit-fail").textContent = rollResult.critFail ? "☠" : ""
+			newElement.querySelector(".crit-fail").textContent = rollResult.critFail ? "🕱" : ""
 
 			rollGroup.appendChild(newElement)
 			rollResult.rolls.forEach(element => {
@@ -138,24 +138,48 @@
 		function rollDie() {
 			return Math.floor(Math.random() * 10) + 1;
 		}
+
+		/*
+		hide/show the dice
+		*/
+		function toggleDice(caller) {
+			caller.closest(".roll-group").querySelectorAll(".dice").forEach(element => element.classList.toggle("hide"))
+		}
 	</script>
 	<style>
-		.split,
-		.multi {
-			border-top: 1px solid black;
-			padding-top: 1em;
+		table {
+			border-collapse: collapse;
 		}
-
+		.split,
+		.multi,
+		.roll {
+			border-top: 10px solid transparent;
+		}
+		.roll {
+			text-align: center;
+		}
+		.roll button {
+			font-size: x-large;
+			font-weight: bold;
+			background-color: green;
+		}
 		.roll-group {
-			display: table;
 			padding: 1em;
 		}
-		.dice {
-			display: table-cell;
+		table th,
+		table td
+		{
+			border-right: 10px solid transparent;
 		}
-		.failures,
+		.crit-fail {
+			font-size: x-large;
+			font-weight: bold;
+			color: red;
+			text-align: center;
+		}
 		.highest,
 		.successes {
+			line-height: 2.5em;
 			text-align: center;
 		}
 		.die {
@@ -165,6 +189,7 @@
 			height: 2em;
 			line-height: 2em;
 			text-align: center;
+			margin: 2px;
 		}
 		.fail {
 			background-color: red;
@@ -172,8 +197,8 @@
 		.success {
 			background-color: green;
 		}
-		.summary {
-			display: inline-block;
+		.hide {
+			display: none;
 		}
 		</style>
 </head>
@@ -185,33 +210,31 @@
 
 		<template id="roll-template">
 			<tr class="roll">
-				<td class="dice">
-				</td>
-
-				<td class="crit-fail"></td>
-				<td class="highest"></td>
-				<td class="successes"></td>
+				<td class="successes" />
+				<td class="crit-fail" />
+				<td class="highest" />
+				<td class="dice" />
 			</tr>
 		</template>
 
 		<template id="roll-group-template">
 			<table class="roll-group">
 				<thead>
-					<th>Dice</th>
-					<th>crit fail</th>
-					<th>highest</th>
 					<th>successes</th>
+					<th>fail?</th>
+					<th>highest</th>
+					<th onclick="toggleDice(this)">Dice</th>
 				</thead>
 			</table>
 		</template>
 	</div>
 
 	<div>
-		<h1>new roll</h1>
+		<h1>Dice settings</h1>
 		<table>
 			<tr>
-				<td><label for="dice-pool">Number of dice</label></td>
-				<td><input id="dice-pool" type="number" min=1 value=3></input></td>
+				<td><label for="dice-pool">dice</label></td>
+				<td><input id="dice-pool" type="number" min=1 max=99 value=3></input></td>
 			</tr>
 			<tr>
 				<td><label for="difficulty">difficulty</label></td>
@@ -228,15 +251,17 @@
 			</tr>
 		
 			<tr class="multi">
-				<td><label for="multi">perform multiple actions</label></td>
+				<td><label for="multi">rage/blood multi</label></td>
 				<td><input id="multi" type="checkbox" ></input></td>
 			</tr>
 			<tr>
 				<td><label for="multi-number">number of actions</label></td>
-				<td><input id="multi-number" type="number" min=1 max=10 value=1></input></td>
+				<td><input id="multi-number" type="number" min=1 max=20 value=1></input></td>
+			</tr>
+			<tr class="roll">
+				<td colspan=2><button onclick="roll()">roll</button></td>
 			</tr>
 		</table>
-		<button onclick="roll()">roll</button>
 	</div>
 
 	<div class=rolling></div>
