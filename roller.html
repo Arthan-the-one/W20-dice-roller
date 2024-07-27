@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>W20 dice roller</title>
+	<script>
+		function roll() {
+			try {
+				const inputs = readInputs()
+				const rollGroup = createRollGroup()
+
+				for (let i=0; i<inputs.rolls; ++i) {
+					const result = rollDice(inputs.pool, inputs.difficulty)
+					createRollLine(result, rollGroup)
+				}
+			} catch(message) {
+				alert(message)
+				return
+			}
+		}
+
+		/*
+		creates the element for one die
+		*/
+		function createDie(dieResult, rollLine) {
+			const template = document.getElementById("die-template").content.children[0]
+			const newElement = document.importNode(template, true)
+
+			newElement.textContent = dieResult.result
+			if (dieResult.success) {newElement.classList.add("success")}
+			if (dieResult.result == 1) {newElement.classList.add("fail")}
+
+			rollLine.querySelector(".dice").appendChild(newElement)
+		}
+
+		/*
+		creates the elements for one roll
+		*/
+		function createRollLine(rollResult, rollGroup) {
+			const template = document.getElementById("roll-template").content.children[0]
+			const newElement = document.importNode(template, true)
+
+			newElement.querySelector(".highest").textContent = rollResult.highest
+			newElement.querySelector(".successes").textContent = rollResult.successes
+			newElement.querySelector(".crit-fail").textContent = rollResult.critFail ? "☠" : ""
+
+			rollGroup.appendChild(newElement)
+			rollResult.rolls.forEach(element => {
+				createDie(element, newElement)
+			})
+		}
+
+		/*
+		creates the wrapper for one multi-roll
+		*/
+		function createRollGroup() {
+			const template = document.getElementById("roll-group-template").content.children[0]
+			const newElement = document.importNode(template, true)
+
+			document.querySelector(".rolling").prepend(newElement)
+			return newElement
+		}
+
+		/*
+		returns {
+			pool: int,
+			rolls: int,
+			difficulty: int
+		}
+		*/
+		function readInputs() {
+			const pool = document.getElementById("dice-pool").value
+			const difficulty = document.getElementById("difficulty").value
+			const split = document.getElementById("split").checked
+			const splits = document.getElementById("split-number").value
+			const multi = document.getElementById("multi").checked
+			const multis = document.getElementById("multi-number").value
+
+			if (split && multi) {
+				throw "Action pool splitting and rage/blood multi-actions are mutually exclusive, please choose one"
+			}
+			const adjustedPool = split ? Math.floor(pool/splits) : pool
+			if (adjustedPool < 1) {
+				throw "Action pool splitting would result in 0 dice"
+			}
+			const rolls = split ? splits : (multi ? multis : 1)
+
+			return {
+				pool: adjustedPool,
+				rolls: rolls,
+				difficulty: difficulty
+			}
+		}
+
+		/*
+		returns {
+			critFail: boolean,
+			successes: int,
+			highest: int,
+			rolls: [{result: int, success: boolean}]
+		}
+		*/
+		function rollDice(number, difficulty) {
+			const results = []
+			var highest = 1
+			var hadSuccess = false
+			var hadFail = false
+			var successes = 0
+
+			for (let i=0; i<number; ++i) {
+				const result = rollDie()
+				const isSuccess = result >= difficulty
+				highest = result>highest ? result : highest
+				if (isSuccess) {
+					++successes
+					hadSuccess = true
+				}
+				if (result == 1) {
+					--successes
+					hadFail = true
+				}
+				results[i] = {
+					result: result,
+					success: isSuccess
+				}
+			}
+
+			return {
+				critFail: hadFail && !hadSuccess,
+				successes: successes,
+				highest: highest,
+				rolls: results
+			}
+		}
+
+		/*
+		returns int 1..10
+		*/
+		function rollDie() {
+			return Math.floor(Math.random() * 10) + 1;
+		}
+	</script>
+	<style>
+		.split,
+		.multi {
+			border-top: 1px solid black;
+			padding-top: 1em;
+		}
+
+		.roll-group {
+			display: table;
+			padding: 1em;
+		}
+		.dice {
+			display: table-cell;
+		}
+		.failures,
+		.highest,
+		.successes {
+			text-align: center;
+		}
+		.die {
+			display: inline-block;
+			border: 1px solid black;
+			width: 2em;
+			height: 2em;
+			line-height: 2em;
+			text-align: center;
+		}
+		.fail {
+			background-color: red;
+		}
+		.success {
+			background-color: green;
+		}
+		.summary {
+			display: inline-block;
+		}
+		</style>
+</head>
+<body>
+	<div>
+		<template id="die-template">
+			<div class="die"></div>
+		</template>
+
+		<template id="roll-template">
+			<tr class="roll">
+				<td class="dice">
+				</td>
+
+				<td class="crit-fail"></td>
+				<td class="highest"></td>
+				<td class="successes"></td>
+			</tr>
+		</template>
+
+		<template id="roll-group-template">
+			<table class="roll-group">
+				<thead>
+					<th>Dice</th>
+					<th>crit fail</th>
+					<th>highest</th>
+					<th>successes</th>
+				</thead>
+			</table>
+		</template>
+	</div>
+
+	<div>
+		<h1>new roll</h1>
+		<table>
+			<tr>
+				<td><label for="dice-pool">Number of dice</label></td>
+				<td><input id="dice-pool" type="number" min=1 value=3></input></td>
+			</tr>
+			<tr>
+				<td><label for="difficulty">difficulty</label></td>
+				<td><input id="difficulty" type="number" min=2 max=10 value=6></input></td>
+			</tr>
+
+			<tr class="split">
+				<td><label for="split">split dice pool</label></td>
+				<td><input id="split" type="checkbox" ></input></td>
+			</tr>
+			<tr>
+				<td><label for="split-number">split into x actions</label></td>
+				<td><input id="split-number" type="number" min=1 max=10 value=1></input></td>
+			</tr>
+		
+			<tr class="multi">
+				<td><label for="multi">perform multiple actions</label></td>
+				<td><input id="multi" type="checkbox" ></input></td>
+			</tr>
+			<tr>
+				<td><label for="multi-number">number of actions</label></td>
+				<td><input id="multi-number" type="number" min=1 max=10 value=1></input></td>
+			</tr>
+		</table>
+		<button onclick="roll()">roll</button>
+	</div>
+
+	<div class=rolling></div>
+</body>
+</html> 
