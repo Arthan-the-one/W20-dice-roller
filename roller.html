@@ -9,8 +9,13 @@
 				const rollGroup = createRollGroup()
 
 				for (let i=0; i<inputs.rolls; ++i) {
-					const result = rollDice(inputs.pool, inputs.difficulty)
-					createRollLine(result, rollGroup)
+					const rollResult = rollDice(inputs.pool, inputs.difficulty)
+					const rollLine = createRollLine(rollResult, rollGroup)
+
+					if (inputs.attack && rollResult.successes > 0) {
+						const damageResult = rollDice(rollResult.successes -1 + inputs.attackDice, 6)
+						appendDamage(rollLine, damageResult, rollGroup)
+					}
 				}
 			} catch(message) {
 				alert(message)
@@ -21,15 +26,29 @@
 		/*
 		creates the element for one die
 		*/
-		function createDie(dieResult, rollLine) {
+		function createDie(dieResult, diceElement) {
 			const template = document.getElementById("die-template").content.children[0]
-			const newElement = document.importNode(template, true)
+			const dieElement = document.importNode(template, true)
 
-			newElement.textContent = dieResult.result
-			if (dieResult.success) {newElement.classList.add("success")}
-			if (dieResult.result == 1) {newElement.classList.add("fail")}
+			dieElement.textContent = dieResult.result
+			if (dieResult.success) {dieElement.classList.add("success")}
+			if (dieResult.result == 1) {dieElement.classList.add("fail")}
 
-			rollLine.querySelector(".dice").appendChild(newElement)
+			diceElement.appendChild(dieElement)
+		}
+
+		/*
+		appends the damage roll to the attack roll
+		*/
+		function appendDamage(rollLine, damageResult, rollGroup) {
+			rollLine.querySelector(".attack.successes").textContent = damageResult.successes > 1 ? damageResult.successes : "*1*"
+			const diceElement = rollLine.querySelector(".attack.dice")
+
+			damageResult.rolls.forEach(element => {
+				createDie(element, diceElement)
+			})
+
+			rollGroup.classList.add("is-attack")
 		}
 
 		/*
@@ -37,16 +56,24 @@
 		*/
 		function createRollLine(rollResult, rollGroup) {
 			const template = document.getElementById("roll-template").content.children[0]
-			const newElement = document.importNode(template, true)
+			const rollLine = document.importNode(template, true)
 
-			newElement.querySelector(".highest").textContent = rollResult.highest
-			newElement.querySelector(".successes").textContent = rollResult.successes
-			newElement.querySelector(".crit-fail").textContent = rollResult.critFail ? "🕱" : ""
+			rollLine.querySelector(".highest").textContent = rollResult.highest
+			const successes = rollLine.querySelector(".successes")
+			if (rollResult.critFail) {
+				const failTemplate = document.getElementById("fail-template").content.children[0]
+				successes.appendChild(document.importNode(failTemplate, true))
+			} else {
+				successes.textContent = rollResult.successes
+			}
 
-			rollGroup.appendChild(newElement)
+			const diceElement = rollLine.querySelector(".dice")
 			rollResult.rolls.forEach(element => {
-				createDie(element, newElement)
+				createDie(element, diceElement)
 			})
+
+			rollGroup.appendChild(rollLine)
+			return rollLine
 		}
 
 		/*
@@ -54,26 +81,33 @@
 		*/
 		function createRollGroup() {
 			const template = document.getElementById("roll-group-template").content.children[0]
-			const newElement = document.importNode(template, true)
+			const rollGroup = document.importNode(template, true)
 
-			document.querySelector(".rolling").prepend(newElement)
-			return newElement
+			document.querySelector(".rolling").prepend(rollGroup)
+			return rollGroup
 		}
 
 		/*
 		returns {
 			pool: int,
 			rolls: int,
-			difficulty: int
+			difficulty: int,
+			attack: boolean,
+			attackDice: int
 		}
 		*/
 		function readInputs() {
-			const pool = document.getElementById("dice-pool").value
-			const difficulty = document.getElementById("difficulty").value
+			const pool = document.getElementById("dice-pool").valueAsNumber
+			const difficulty = document.getElementById("difficulty").valueAsNumber
+
+			const attack = document.getElementById("attack").checked
+			const attackDice = document.getElementById("attack-number").valueAsNumber
+
 			const split = document.getElementById("split").checked
-			const splits = document.getElementById("split-number").value
+			const splits = document.getElementById("split-number").valueAsNumber
+
 			const multi = document.getElementById("multi").checked
-			const multis = document.getElementById("multi-number").value
+			const multis = document.getElementById("multi-number").valueAsNumber
 
 			if (split && multi) {
 				throw "Action pool splitting and rage/blood multi-actions are mutually exclusive, please choose one"
@@ -87,7 +121,9 @@
 			return {
 				pool: adjustedPool,
 				rolls: rolls,
-				difficulty: difficulty
+				difficulty: difficulty,
+				attack: attack,
+				attackDice: attackDice
 			}
 		}
 
@@ -143,13 +179,23 @@
 		hide/show the dice
 		*/
 		function toggleDice(caller) {
-			caller.closest(".roll-group").querySelectorAll(".dice").forEach(element => element.classList.toggle("hide"))
+			const isAttack = caller.classList.contains("attack")
+			caller.closest(".roll-group").querySelectorAll(".dice" + (isAttack ? ".attack" : ":not(.attack)")).forEach(element => element.classList.toggle("hide-dice"))
 		}
 	</script>
 	<style>
+/* general */
 		table {
 			border-collapse: collapse;
 		}
+		table th,
+		table td
+		{
+			border-right: 10px solid transparent;
+			border-left: 10px solid transparent;
+		}
+/* menu */
+		.attack-setting,
 		.split,
 		.multi,
 		.roll {
@@ -163,24 +209,35 @@
 			font-weight: bold;
 			background-color: green;
 		}
+/* general display */
 		.roll-group {
 			padding: 1em;
 		}
-		table th,
-		table td
-		{
-			border-right: 10px solid transparent;
+		.highest,
+		.successes {
+			line-height: 2.5em;
 		}
 		.crit-fail {
 			font-size: x-large;
 			font-weight: bold;
 			color: red;
-			text-align: center;
 		}
-		.highest,
-		.successes {
-			line-height: 2.5em;
-			text-align: center;
+		.dice {
+			text-align: left;
+		}
+/* damage rolls */
+		.attack {
+			display:none;
+		}
+		.is-attack .attack {
+			display: revert;
+		}
+		.attack.spacer {
+			width: 30px;
+		}
+/* dice */
+		.hide-dice .die {
+			display: none;
 		}
 		.die {
 			display: inline-block;
@@ -197,9 +254,6 @@
 		.success {
 			background-color: green;
 		}
-		.hide {
-			display: none;
-		}
 		</style>
 </head>
 <body>
@@ -208,22 +262,39 @@
 			<div class="die"></div>
 		</template>
 
+		<template id="fail-template">
+			<span class="crit-fail">🕱</span>
+		</template>
+
 		<template id="roll-template">
 			<tr class="roll">
 				<td class="successes" />
-				<td class="crit-fail" />
 				<td class="highest" />
 				<td class="dice" />
+
+				<td class="attack spacer" />
+				<td class="attack successes" />
+				<td class="attack dice" />
 			</tr>
 		</template>
 
 		<template id="roll-group-template">
 			<table class="roll-group">
 				<thead>
-					<th>successes</th>
-					<th>fail?</th>
-					<th>highest</th>
-					<th onclick="toggleDice(this)">Dice</th>
+					<tr class="attack">
+						<th colspan=3>Attack</th>
+						<th />
+						<th colspan=2>Damage</th>
+					</tr>
+					<tr>
+						<th>successes</th>
+						<th>highest</th>
+						<th onclick="toggleDice(this)">Dice</th>
+
+						<th class="attack" />
+						<th class="attack">successes</th>
+						<th class="attack" onclick="toggleDice(this)">Dice</th>
+					</tr>
 				</thead>
 			</table>
 		</template>
@@ -241,23 +312,33 @@
 				<td><input id="difficulty" type="number" min=2 max=10 value=6></input></td>
 			</tr>
 
+			<tr class="attack-setting">
+				<td><label for="attack">attack</label></td>
+				<td><input id="attack" type="checkbox"></input></td>
+			</tr>
+			<tr>
+				<td><label for="attack-number">damage dice</label></td>
+				<td><input id="attack-number" type="number" min=1 max=99 value=6></input></td>
+			</tr>
+
 			<tr class="split">
 				<td><label for="split">split dice pool</label></td>
-				<td><input id="split" type="checkbox" ></input></td>
+				<td><input id="split" type="checkbox"></input></td>
 			</tr>
 			<tr>
 				<td><label for="split-number">split into x actions</label></td>
 				<td><input id="split-number" type="number" min=1 max=10 value=1></input></td>
 			</tr>
-		
+
 			<tr class="multi">
 				<td><label for="multi">rage/blood multi</label></td>
-				<td><input id="multi" type="checkbox" ></input></td>
+				<td><input id="multi" type="checkbox"></input></td>
 			</tr>
 			<tr>
 				<td><label for="multi-number">number of actions</label></td>
 				<td><input id="multi-number" type="number" min=1 max=20 value=1></input></td>
 			</tr>
+
 			<tr class="roll">
 				<td colspan=2><button onclick="roll()">roll</button></td>
 			</tr>
