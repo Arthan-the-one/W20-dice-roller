@@ -9,7 +9,7 @@
 				const rollGroup = createRollGroup()
 
 				for (let i=0; i<inputs.rolls; ++i) {
-					const rollResult = rollDice(inputs.pool, inputs.difficulty)
+					const rollResult = rollDice(inputs.pool[i], inputs.difficulty)
 					const rollLine = createRollLine(rollResult, rollGroup)
 
 					if (inputs.attack && rollResult.successes > 0) {
@@ -41,7 +41,7 @@
 		appends the damage roll to the attack roll
 		*/
 		function appendDamage(rollLine, damageResult, rollGroup) {
-			rollLine.querySelector(".attack.successes").textContent = damageResult.successes > 1 ? damageResult.successes : "*1*"
+			rollLine.querySelector(".attack.successes").textContent = damageResult.successes > 0 ? damageResult.successes : "*1*"
 			const diceElement = rollLine.querySelector(".attack.dice")
 
 			damageResult.rolls.forEach(element => {
@@ -89,7 +89,7 @@
 
 		/*
 		returns {
-			pool: int,
+			pool: [int],
 			rolls: int,
 			difficulty: int,
 			attack: boolean,
@@ -113,13 +113,26 @@
 				throw "Action pool splitting and rage/blood multi-actions are mutually exclusive, please choose one"
 			}
 			const adjustedPool = split ? Math.floor(pool/splits) : pool
+
 			if (adjustedPool < 1) {
 				throw "Action pool splitting would result in 0 dice"
+			}
+
+			var remainder = pool%splits
+			let pool2 = []
+
+			for (let rollcount = splits;rollcount>0;rollcount--) {
+				if (remainder>0) {
+					pool2.push(adjustedPool + 1)
+					remainder--
+				} else {
+					pool2.push(adjustedPool)
+				}
 			}
 			const rolls = split ? splits : (multi ? multis : 1)
 
 			return {
-				pool: adjustedPool,
+				pool: pool2,
 				rolls: rolls,
 				difficulty: difficulty,
 				attack: attack,
@@ -225,6 +238,16 @@
 		.dice {
 			text-align: left;
 		}
+		.detail {
+			position: absolute;
+			background-color: gray;
+			border: 1px solid black;
+			display: none;
+		}
+		.interactive {
+			cursor: pointer;
+			text-decoration: underline #000 dotted;
+		}
 /* damage rolls */
 		.attack {
 			display:none;
@@ -289,11 +312,11 @@
 					<tr>
 						<th>successes</th>
 						<th>highest</th>
-						<th onclick="toggleDice(this)">Dice</th>
+						<th class="interactive" onclick="toggleDice(this)">Dice</th>
 
 						<th class="attack" />
 						<th class="attack">successes</th>
-						<th class="attack" onclick="toggleDice(this)">Dice</th>
+						<th class="attack interactive" onclick="toggleDice(this)">Dice</th>
 					</tr>
 				</thead>
 			</table>
@@ -304,38 +327,38 @@
 		<h1>Dice settings</h1>
 		<table>
 			<tr>
-				<td><label for="dice-pool">dice</label></td>
+				<td><label for="dice-pool">dice</label><span class="detail">Number of total dice available for the  chosen action</span></td>
 				<td><input id="dice-pool" type="number" min=1 max=99 value=3></input></td>
 			</tr>
 			<tr>
-				<td><label for="difficulty">difficulty</label></td>
+				<td><label for="difficulty">difficulty</label><span class="detail">Difficulty of the roll</span></td>
 				<td><input id="difficulty" type="number" min=2 max=10 value=6></input></td>
 			</tr>
 
 			<tr class="attack-setting">
-				<td><label for="attack">attack</label></td>
+				<td><label for="attack">attack</label><span class="detail">Also roll damage for successful attacks</span></td>
 				<td><input id="attack" type="checkbox"></input></td>
 			</tr>
 			<tr>
-				<td><label for="attack-number">damage dice</label></td>
+				<td><label for="attack-number">damage dice</label><span class="detail">Total number of damage dice (before additional attack successes)</span></td>
 				<td><input id="attack-number" type="number" min=1 max=99 value=6></input></td>
 			</tr>
 
 			<tr class="split">
-				<td><label for="split">split dice pool</label></td>
+				<td><label for="split">split dice pool</label><span class="detail">See "Chapter Five: Rules" - "Ratings" - "Multiple Actions" p. 233</span></td>
 				<td><input id="split" type="checkbox"></input></td>
 			</tr>
 			<tr>
-				<td><label for="split-number">split into x actions</label></td>
+				<td><label for="split-number">split into x actions</label><span class="detail">Total number of actions to perform</span></td>
 				<td><input id="split-number" type="number" min=1 max=10 value=1></input></td>
 			</tr>
 
 			<tr class="multi">
-				<td><label for="multi">rage/blood multi</label></td>
+				<td><label for="multi">rage/blood multi</label><span class="detail">See "Chapter Six: Systems and Drama" - "Combat" - "SPENDING RAGE (Sidebar)" p. 288 -- or -- "Chapter Two: The Changing Breeds" - "Ananasi" - "Blood" p. 60 (Changing Breeds)</span></td>
 				<td><input id="multi" type="checkbox"></input></td>
 			</tr>
 			<tr>
-				<td><label for="multi-number">number of actions</label></td>
+				<td><label for="multi-number">number of actions</label><span class="detail">Total number of actions to perform</span></td>
 				<td><input id="multi-number" type="number" min=1 max=20 value=1></input></td>
 			</tr>
 
